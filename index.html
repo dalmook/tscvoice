@@ -1,95 +1,205 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>중국어 간체 → 원어민 발음 (GitHub Pages)</title>
+  <style>
+    :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --fg:#e5e7eb; --accent:#22d3ee; }
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#0b1027,#0f172a 40%,#0b1027);color:var(--fg);} 
+    .wrap{max-width:980px;margin:24px auto;padding:16px}
+    .card{background:rgba(17,24,39,.7);backdrop-filter:blur(6px);border:1px solid rgba(148,163,184,.2);border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    h1{font-size:24px;margin:0 0 8px} p{color:var(--muted);margin:0 0 16px}
+    textarea{width:100%;min-height:180px;padding:12px 14px;border-radius:12px;background:#0b1224;border:1px solid rgba(148,163,184,.25);color:var(--fg);resize:vertical}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:12px}
+    label{font-size:14px;color:var(--muted)} select,input[type="range"]{appearance:none;background:#0b1224;border:1px solid rgba(148,163,184,.25);color:var(--fg);border-radius:10px;padding:8px}
+    button{border:0;padding:10px 14px;border-radius:12px;background:linear-gradient(90deg,#06b6d4,#22d3ee);color:#022c3a;font-weight:700;cursor:pointer}
+    button.sec{background:#0b1224;border:1px solid rgba(148,163,184,.25);color:var(--fg)}
+    .muted{color:var(--muted);font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media (min-width:720px){.grid{grid-template-columns:2fr 1fr}}
+    .list{font-size:14px;line-height:1.5;background:#0b1224;border:1px dashed rgba(148,163,184,.25);padding:12px;border-radius:12px;max-height:240px;overflow:auto}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#0b1224;border:1px solid rgba(148,163,184,.25);margin-right:6px}
+    .foot{margin-top:14px;font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>중국어 간체 → 원어민 발음 (브라우저 내장 TTS)</h1>
+      <p>문장을 입력하면 브라우저의 <b>Speech Synthesis</b>를 사용해 중국어(표준어)로 읽어줍니다. GitHub Pages에서 그대로 동작하며, 서버가 필요 없습니다.</p>
+      <div class="grid">
+        <div>
+          <label for="text">중국어 간체 문장들</label>
+          <textarea id="text" placeholder="예) 公司同事中，周围去外国留学的同事多吗？\n我上个星期开始在公园运动了。\n……"></textarea>
+          <div class="row">
+            <div>
+              <label>음성/목소리</label><br/>
+              <select id="voice"></select>
+            </div>
+            <div>
+              <label>속도 <span id="rateVal" class="pill">1.0x</span></label><br/>
+              <input type="range" id="rate" min="0.6" max="1.4" step="0.05" value="1.0" />
+            </div>
+            <div>
+              <label>피치 <span id="pitchVal" class="pill">1.0</span></label><br/>
+              <input type="range" id="pitch" min="0.8" max="1.2" step="0.05" value="1.0" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:16px">
+            <button id="speak">원어민처럼 읽기</button>
+            <button id="stop" class="sec">정지</button>
+            <button id="record" class="sec" title="크롬/엣지: '이 탭 공유 및 오디오' 허용 필요">녹음하여 파일로 저장 (실험적)</button>
+          </div>
+          <div class="foot">※ 쉼표(，)는 짧은 쉬는 타이밍으로, 마침표(。)、물음표（？）、느낌표（！） 기준으로 문장을 분리합니다.</div>
+        </div>
+        <div>
+          <label>대기열(문장별)</label>
+          <div id="queue" class="list">문장을 입력하면 여기에 분리되어 표시됩니다.</div>
+          <div class="muted" style="margin-top:6px">
+            <div>• 중국어 음성이 보이지 않으면: OS/브라우저에 중국어 음성이 설치되어 있어야 합니다.</div>
+            <div>• 파일 저장: 브라우저가 탭 오디오 공유를 지원할 때만 동작합니다(크롬/엣지 권장).</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
+    <p class="foot">制作者: 당신 🙂 | 오픈소스/서버리스 | GitHub Pages에 <code>index.html</code>만 올리면 끝!</p>
+  </div>
 
+  <script>
+    // ---------- 유틸: 문장 분리 ----------
+    function splitSentences(text){
+      // 중국어 종결부호와 줄바꿈 기준으로 분리
+      const parts = text
+        .replace(/([。！？!?])/g, '$1\n') // 문장 끝에 줄바꿈
+        .split(/\n+/)
+        .map(s => s.replace(/\s+/g,'').trim()) // 공백 제거
+        .filter(Boolean);
+      return parts;
+    }
 
+    // ---------- 음성 목록 로드 ----------
+    const voiceSel = document.getElementById('voice');
+    let voices = [];
+    function populateVoices(){
+      voices = window.speechSynthesis.getVoices();
+      const preferred = voices.filter(v => /zh|cmn|Chinese/i.test(v.lang || v.name));
+      const list = preferred.length ? preferred : voices; // 중국어 우선, 없으면 전체
+      voiceSel.innerHTML = '';
+      list.forEach((v, i) => {
+        const opt = document.createElement('option');
+        opt.value = v.name;
+        opt.textContent = `${v.name} (${v.lang})`;
+        voiceSel.appendChild(opt);
+      });
+    }
+    populateVoices();
+    window.speechSynthesis.onvoiceschanged = populateVoices;
 
-  
-  
-  
-  
+    // ---------- 상태 ----------
+    let speaking = false;
+    let stopRequested = false;
 
+    const rateEl = document.getElementById('rate');
+    const pitchEl = document.getElementById('pitch');
+    const rateVal = document.getElementById('rateVal');
+    const pitchVal = document.getElementById('pitchVal');
+    rateEl.addEventListener('input', () => rateVal.textContent = `${Number(rateEl.value).toFixed(2)}x`);
+    pitchEl.addEventListener('input', () => pitchVal.textContent = `${Number(pitchEl.value).toFixed(2)}`);
 
-  
+    const queueEl = document.getElementById('queue');
+    const textEl = document.getElementById('text');
 
-    
+    function renderQueue(sentences){
+      queueEl.innerHTML = sentences.map((s, idx) => `<div><span class="pill">${idx+1}</span> ${s}</div>`).join('') || '문장을 입력하면 여기에 분리되어 표시됩니다.';
+    }
 
-      
-중국어 간체 → 원어민 발음 (브라우저 내장 TTS)
+    textEl.addEventListener('input', () => renderQueue(splitSentences(textEl.value)));
 
-      
-문장을 입력하면 브라우저의 Speech Synthesis를 사용해 중국어(표준어)로 읽어줍니다. GitHub Pages에서 그대로 동작하며, 서버가 필요 없습니다.
+    // ---------- 말하기 ----------
+    async function speakAll(sentences){
+      if(!sentences.length) return;
+      speaking = true; stopRequested = false;
+      for (const s of sentences){
+        if(stopRequested){ break; }
+        await speakOne(s);
+      }
+      speaking = false;
+    }
 
-      
+    function speakOne(text){
+      return new Promise(resolve => {
+        const u = new SpeechSynthesisUtterance(text);
+        const chosen = voices.find(v => v.name === voiceSel.value) || voices.find(v=>/zh|cmn|Chinese/i.test(v.lang||v.name)) || voices[0];
+        if(chosen) u.voice = chosen;
+        u.rate = Number(rateEl.value);
+        u.pitch = Number(pitchEl.value);
+        u.onend = resolve;
+        u.onerror = resolve;
+        speechSynthesis.speak(u);
+      });
+    }
 
-        
+    document.getElementById('speak').addEventListener('click', () => {
+      const sentences = splitSentences(textEl.value);
+      renderQueue(sentences);
+      if(!sentences.length){ alert('먼저 중국어 문장을 입력해주세요.'); return; }
+      if(speaking){ speechSynthesis.cancel(); speaking=false; }
+      speakAll(sentences);
+    });
 
-          중국어 간체 문장들
-          
-          
+    document.getElementById('stop').addEventListener('click', () => {
+      stopRequested = true; speechSynthesis.cancel(); speaking=false;
+    });
 
-            
+    // ---------- (실험적) 탭 오디오 녹음 → 파일 저장 ----------
+    // 크롬/엣지: getDisplayMedia에서 "이 탭 공유" + "오디오" 선택 필요
+    let mediaRecorder, chunks=[];
+    async function startRecording(){
+      // 사용자에게 탭 공유 요청 (오디오 포함)
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: { echoCancellation: true, noiseSuppression: true }
+      });
+      // 탭만 녹음하도록 비디오 트랙은 즉시 중지하고, 오디오만 사용
+      const audioTracks = stream.getAudioTracks();
+      const audioStream = new MediaStream(audioTracks);
+      mediaRecorder = new MediaRecorder(audioStream);
+      chunks = [];
+      mediaRecorder.ondataavailable = e => { if(e.data.size>0) chunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `tts_zh_${Date.now()}.webm`;
+        a.click();
+        setTimeout(()=>URL.revokeObjectURL(url), 2000);
+      };
+      mediaRecorder.start();
+      return stream; // 호출 측에서 stop하려고 반환
+    }
 
-              음성/목소리
+    async function recordAndSpeak(){
+      const sentences = splitSentences(textEl.value);
+      renderQueue(sentences);
+      if(!sentences.length){ alert('먼저 중국어 문장을 입력해주세요.'); return; }
+      let displayStream;
+      try{
+        displayStream = await startRecording();
+      }catch(e){
+        alert('탭 오디오 공유가 허용되지 않았습니다. 크롬/엣지에서 "이 탭 공유"와 "오디오"를 켜주세요.');
+        return;
+      }
+      // 녹음 시작 후 TTS 재생
+      await speakAll(sentences);
+      // 다 읽으면 녹음 정지
+      if(mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      // 화면 공유 중지
+      displayStream.getTracks().forEach(t=>t.stop());
+    }
 
-              
-            
-
-            
-
-              속도 1.0x
-
-              
-            
-
-            
-
-              피치 1.0
-
-              
-            
-
-          
-
-          
-
-            원어민처럼 읽기
-            정지
-            녹음하여 파일로 저장 (실험적)
-          
-
-          
-※ 쉼표(，)는 짧은 쉬는 타이밍으로, 마침표(。)、물음표（？）、느낌표（！） 기준으로 문장을 분리합니다.
-
-        
-
-        
-
-          대기열(문장별)
-          
-문장을 입력하면 여기에 분리되어 표시됩니다.
-
-          
-
-            
-• 중국어 음성이 보이지 않으면: OS/브라우저에 중국어 음성이 설치되어 있어야 합니다.
-
-            
-• 파일 저장: 브라우저가 탭 오디오 공유를 지원할 때만 동작합니다(크롬/엣지 권장).
-
-          
-
-        
-
-      
-
-    
-
-
-<p class="foot">制作者: 당신 🙂 | 오픈소스/서버리스 | GitHub Pages에 <code>index.html</code>만 올리면 끝!</p>
-
-
-  
-
-  
-
-
-
+    document.getElementById('record').addEventListener('click', recordAndSpeak);
+  </script>
+</body>
+</html>
