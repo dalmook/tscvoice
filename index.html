@@ -6,7 +6,24 @@
 </head>
 <body>
   <h2>중국어 TTS → MP3 다운로드</h2>
+
   <textarea id="text" rows="3" cols="40">公司同事中, 周围去外国留学的同事多吗？</textarea><br><br>
+
+  <!-- 속도 조절 -->
+  <label for="speed">속도: </label>
+  <input type="range" id="speed" min="0.5" max="2.0" step="0.1" value="1">
+  <span id="speedVal">1.0</span><br><br>
+
+  <!-- 목소리 선택 -->
+  <label for="voice">목소리 선택: </label>
+  <select id="voice">
+    <option value="cmn-CN-Wavenet-A">여성 - Wavenet A</option>
+    <option value="cmn-CN-Wavenet-B">남성 - Wavenet B</option>
+    <option value="cmn-CN-Wavenet-C">여성 - Wavenet C</option>
+    <option value="cmn-CN-Wavenet-D">남성 - Wavenet D</option>
+    <option value="cmn-CN-Standard-A">여성 - Standard A</option>
+    <option value="cmn-CN-Standard-B">남성 - Standard B</option>
+  </select><br><br>
 
   <button id="ttsBtn">TTS 생성</button>
   <a id="downloadLink" style="display:none;">MP3 다운로드</a>
@@ -14,11 +31,20 @@
   <script>
     const ttsBtn = document.getElementById("ttsBtn");
     const downloadLink = document.getElementById("downloadLink");
+    const speedInput = document.getElementById("speed");
+    const speedVal = document.getElementById("speedVal");
+
+    // 슬라이더 값 표시
+    speedInput.oninput = () => {
+      speedVal.textContent = speedInput.value;
+    };
 
     ttsBtn.onclick = async () => {
       const text = document.getElementById("text").value;
+      const speed = parseFloat(speedInput.value);
+      const voiceName = document.getElementById("voice").value;
 
-      // 🔑 여기 API 키를 넣으세요
+      // 🔑 Google Cloud API 키 넣기
       const apiKey = "AIzaSyB75eePCH1FTX3jXLA2mfk0EwoV_uf-Yxg";
 
       const response = await fetch(
@@ -29,10 +55,13 @@
           body: JSON.stringify({
             input: { text: text },
             voice: {
-              languageCode: "cmn-CN",
-              name: "cmn-CN-Wavenet-A"  // Google 중국어 여성 목소리
+              languageCode: "cmn-CN",   // 중국어 표준어
+              name: voiceName           // 선택한 목소리
             },
-            audioConfig: { audioEncoding: "MP3" }
+            audioConfig: {
+              audioEncoding: "MP3",
+              speakingRate: speed       // 속도 조절
+            }
           })
         }
       );
@@ -49,7 +78,6 @@
         const blob = new Blob([byteArray], { type: "audio/mp3" });
         const url = URL.createObjectURL(blob);
 
-        // 다운로드 링크 표시
         downloadLink.href = url;
         downloadLink.download = "tts.mp3";
         downloadLink.style.display = "block";
