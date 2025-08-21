@@ -1,40 +1,70 @@
-<!doctype html>
-<html lang="ko">
+<!DOCTYPE html>
+<html lang="zh">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>중국어 간체 → 원어민 발음 (GitHub Pages)</title>
-  <style>
-    :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --fg:#e5e7eb; --accent:#22d3ee; }
-    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#0b1027,#0f172a 40%,#0b1027);color:var(--fg);} 
-    .wrap{max-width:980px;margin:24px auto;padding:16px}
-    .card{background:rgba(17,24,39,.7);backdrop-filter:blur(6px);border:1px solid rgba(148,163,184,.2);border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-    h1{font-size:24px;margin:0 0 8px} p{color:var(--muted);margin:0 0 16px}
-    textarea{width:100%;min-height:180px;padding:12px 14px;border-radius:12px;background:#0b1224;border:1px solid rgba(148,163,184,.25);color:var(--fg);resize:vertical}
-    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:12px}
-    label{font-size:14px;color:var(--muted)} select,input[type="range"]{appearance:none;background:#0b1224;border:1px solid rgba(148,163,184,.25);color:var(--fg);border-radius:10px;padding:8px}
-    button{border:0;padding:10px 14px;border-radius:12px;background:linear-gradient(90deg,#06b6d4,#22d3ee);color:#022c3a;font-weight:700;cursor:pointer}
-    button.sec{background:#0b1224;border:1px solid rgba(148,163,184,.25);color:var(--fg)}
-    .muted{color:var(--muted);font-size:13px}
-    .grid{display:grid;grid-template-columns:1fr;gap:12px}
-    @media (min-width:720px){.grid{grid-template-columns:2fr 1fr}}
-    .list{font-size:14px;line-height:1.5;background:#0b1224;border:1px dashed rgba(148,163,184,.25);padding:12px;border-radius:12px;max-height:240px;overflow:auto}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#0b1224;border:1px solid rgba(148,163,184,.25);margin-right:6px}
-    .foot{margin-top:14px;font-size:12px;color:var(--muted)}
-  </style>
+  <meta charset="UTF-8">
+  <title>중국어 TTS + MP3 저장</title>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>중국어 간체 → 원어민 발음 (브라우저 내장 TTS)</h1>
-      <p>문장을 입력하면 브라우저의 <b>Speech Synthesis</b>를 사용해 중국어(표준어)로 읽어줍니다. GitHub Pages에서 그대로 동작하며, 서버가 필요 없습니다.</p>
-      <div class="grid">
-        <div>
-          <label for="text">중국어 간체 문장들</label>
-          <textarea id="text" placeholder="예) 公司同事中，周围去外国留学的同事多吗？\n我上个星期开始在公园运动了。\n……"></textarea>
-          <div class="row">
-            <div>
-              <label>음성/목소리</label><br/>
+  <h2>중국어 문장 발음 & MP3 다운로드</h2>
+  <textarea id="text" rows="3" cols="40">公司同事中, 周围去外国留学的同事多吗？</textarea><br><br>
+
+  <button id="speakBtn">읽어주기</button>
+  <button id="recordBtn">읽고 MP3 저장</button>
+  <a id="downloadLink" style="display:none;">MP3 다운로드</a>
+
+  <script>
+    const textArea = document.getElementById("text");
+    const speakBtn = document.getElementById("speakBtn");
+    const recordBtn = document.getElementById("recordBtn");
+    const downloadLink = document.getElementById("downloadLink");
+
+    // ✅ 단순 발음
+    speakBtn.onclick = () => {
+      const utter = new SpeechSynthesisUtterance(textArea.value);
+      utter.lang = "zh-CN"; // 중국어
+      speechSynthesis.speak(utter);
+    };
+
+    // ✅ 발음 + 녹음 → mp3 다운로드
+    recordBtn.onclick = async () => {
+      // 오디오 스트림 캡처
+      const audioContext = new AudioContext();
+      const dest = audioContext.createMediaStreamDestination();
+      const utter = new SpeechSynthesisUtterance(textArea.value);
+      utter.lang = "zh-CN";
+
+      const synth = window.speechSynthesis;
+      const source = audioContext.createMediaStreamSource(dest.stream);
+
+      // MediaRecorder로 녹음
+      const recorder = new MediaRecorder(dest.stream);
+      let chunks = [];
+
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = e => {
+        const blob = new Blob(chunks, { type: "audio/mp3" });
+        const url = URL.createObjectURL(blob);
+        downloadLink.href = url;
+        downloadLink.download = "tts.mp3";
+        downloadLink.style.display = "block";
+        downloadLink.textContent = "MP3 다운로드";
+      };
+
+      recorder.start();
+      synth.speak(utter);
+
+      utter.onend = () => {
+        recorder.stop();
+        audioContext.close();
+      };
+
+      // 음성 합성 → 오디오 연결
+      const utterSource = audioContext.createMediaStreamSource(dest.stream);
+      utterSource.connect(audioContext.destination);
+    };
+  </script>
+</body>
+</html>              <label>음성/목소리</label><br/>
               <select id="voice"></select>
             </div>
             <div>
