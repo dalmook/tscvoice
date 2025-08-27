@@ -2,58 +2,89 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>중국어 & 한국어 TTS (재생 + MP3 저장)</title>
+  <title>TTS (중/한/영) - 재생 & MP3 저장</title>
   <style>
-    body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 0 16px; line-height: 1.5; }
-    label { font-weight: bold; margin-right: 10px; }
-    textarea { width:100%; font-size:16px; margin: 10px 0; }
-    button { padding:8px 14px; border:0; border-radius:8px; font-weight:bold; cursor:pointer; }
-    #goBtn { background:#2563eb; color:white; }
-    audio { width:100%; margin-top:10px; }
-    select, input[type=range] { margin: 4px 0; }
-    #downloadLink { margin-left: 12px; display:none; }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans CJK KR,sans-serif;max-width:860px;margin:28px auto;padding:0 16px;line-height:1.55}
+    label{font-weight:600;margin-right:8px}
+    textarea{width:100%;font-size:16px}
+    .grid{display:grid;grid-template-columns:140px 1fr;gap:10px 12px;align-items:center;margin:16px 0}
+    button{padding:10px 14px;border:0;border-radius:10px;font-weight:700;cursor:pointer}
+    #goBtn{background:#2563eb;color:#fff}
+    #downloadLink{display:none;margin-left:10px}
+    audio{width:100%;margin-top:12px}
+    .muted{color:#666;font-size:13px}
   </style>
 </head>
 <body>
-  <h2>중국어 & 한국어 TTS → 브라우저 재생 & MP3 다운로드</h2>
+  <h2>TTS (중국어 · 한국어 · 영어) → 브라우저 재생 & MP3 다운로드</h2>
 
-  <textarea id="text" rows="3">公司同事中, 周围去外国留学的同事多吗？</textarea><br>
+  <textarea id="text" rows="3">公司同事中, 周围去外国留学的同事多吗？</textarea>
 
-  <!-- 언어 선택 -->
-  <label for="lang">언어</label>
-  <select id="lang">
-    <option value="cmn-CN">중국어 (표준어)</option>
-    <option value="ko-KR">한국어</option>
-  </select><br>
+  <div class="grid">
+    <label for="lang">언어</label>
+    <select id="lang">
+      <option value="cmn-CN">중국어(표준어)</option>
+      <option value="ko-KR">한국어</option>
+      <option value="en-US">영어(미국)</option>
+    </select>
 
-  <!-- 목소리 선택 -->
-  <label for="voice">목소리</label>
-  <select id="voice">
-    <!-- 기본값은 중국어 -->
-    <option value="cmn-CN-Wavenet-A">중국어 여성 A</option>
-    <option value="cmn-CN-Wavenet-B">중국어 남성 B</option>
-    <option value="cmn-CN-Wavenet-C">중국어 여성 C</optㅅion>
-    <option value="cmn-CN-Wavenet-D">중국어 남성 D</option>
-    <option value="ko-KR-Wavenet-A">한국어 여성 A</option>
-    <option value="ko-KR-Wavenet-B">한국어 남성 B</option>
-    <option value="ko-KR-Wavenet-C">한국어 여성 C</option>
-    <option value="ko-KR-Wavenet-D">한국어 남성 D</option>
-  </select><br>
+    <label for="voice">목소리</label>
+    <select id="voice"></select>
 
-  <!-- 속도/피치 -->
-  <label>속도</label>
-  <input type="range" id="speed" min="0.5" max="2.0" step="0.05" value="1.0" />
-  <span id="speedVal">1.0</span><br>
+    <label for="speed">속도</label>
+    <div>
+      <input type="range" id="speed" min="0.5" max="2.0" step="0.05" value="1.0">
+      <span id="speedVal" class="muted">1.00</span>
+    </div>
 
-  <label>피치</label>
-  <input type="range" id="pitch" min="-10" max="10" step="0.5" value="0" />
-  <span id="pitchVal">0.0</span><br><br>
+    <label for="pitch">피치</label>
+    <div>
+      <input type="range" id="pitch" min="-10" max="10" step="0.5" value="0">
+      <span id="pitchVal" class="muted">0.0</span>
+    </div>
+  </div>
 
-  <button id="goBtn">TTS 생성 & 듣기</button>
+  <button id="goBtn">생성 & 바로 듣기</button>
   <a id="downloadLink">MP3 다운로드</a>
-  <audio id="player" controls></audio>
+
+  <audio id="player" controls preload="none"></audio>
+
+  <p class="muted">
+    ※ Google Cloud API 키는 아래 스크립트의 <code>YOUR_API_KEY</code> 위치에 입력하세요. <br>
+    ※ API 키 보안: <b>HTTP referrer 허용</b>에 <code>https://dalmook.github.io/*</code> 추가.
+  </p>
 
   <script>
+    // ── 언어별 지원 보이스 목록 (Google Cloud TTS 이름)
+    // 필요시 원하는 항목만 남겨도 됩니다.
+    const VOICES = {
+      "cmn-CN": [
+        { name: "cmn-CN-Wavenet-A", label: "여성 · Wavenet A" },
+        { name: "cmn-CN-Wavenet-C", label: "여성 · Wavenet C" },
+        { name: "cmn-CN-Wavenet-B", label: "남성 · Wavenet B" },
+        { name: "cmn-CN-Wavenet-D", label: "남성 · Wavenet D" },
+        { name: "cmn-CN-Standard-A", label: "여성 · Standard A" },
+        { name: "cmn-CN-Standard-B", label: "남성 · Standard B" },
+      ],
+      "ko-KR": [
+        { name: "ko-KR-Wavenet-A", label: "여성 · Wavenet A" },
+        { name: "ko-KR-Wavenet-C", label: "여성 · Wavenet C" },
+        { name: "ko-KR-Wavenet-B", label: "남성 · Wavenet B" },
+        { name: "ko-KR-Wavenet-D", label: "남성 · Wavenet D" },
+        // Standard가 필요하면 아래 주석 해제
+        // { name: "ko-KR-Standard-A", label: "여성 · Standard A" },
+        // { name: "ko-KR-Standard-B", label: "남성 · Standard B" },
+      ],
+      "en-US": [
+        { name: "en-US-Neural2-A", label: "여성 · Neural2 A" },
+        { name: "en-US-Neural2-C", label: "여성 · Neural2 C" },
+        { name: "en-US-Neural2-D", label: "남성 · Neural2 D" },
+        { name: "en-US-Neural2-F", label: "여성 · Neural2 F" },
+        { name: "en-US-Wavenet-D", label: "남성 · Wavenet D" },
+        { name: "en-US-Wavenet-F", label: "여성 · Wavenet F" },
+      ],
+    };
+
     const textEl = document.getElementById("text");
     const langEl = document.getElementById("lang");
     const voiceEl = document.getElementById("voice");
@@ -62,158 +93,76 @@
     const speedVal = document.getElementById("speedVal");
     const pitchVal = document.getElementById("pitchVal");
     const goBtn = document.getElementById("goBtn");
-    const player = document.getElementById("player");
     const downloadLink = document.getElementById("downloadLink");
+    const player = document.getElementById("player");
 
-    speedEl.oninput = () => speedVal.textContent = speedEl.value;
-    pitchEl.oninput = () => pitchVal.textContent = pitchEl.value;
-
-    async function synthesize() {
-      const apiKey = "AIzaSyB75eePCH1FTX3jXLA2mfk0EwoV_uf-Yxg"; // 여기에 Google Cloud API 키 넣기
-      const text = textEl.value;
-      const lang = langEl.value;
-      const voiceName = voiceEl.value;
-
-      goBtn.disabled = true; goBtn.textContent = "생성 중...";
-
-      const res = await fetch(
-        `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            input: { text },
-            voice: {
-              languageCode: lang,
-              name: voiceName
-            },
-            audioConfig: {
-              audioEncoding: "MP3",
-              speakingRate: parseFloat(speedEl.value),
-              pitch: parseFloat(pitchEl.value)
-            }
-          })
-        }
-      );
-
-      const data = await res.json();
-      if (!data.audioContent) {
-        alert("TTS 생성 실패: " + JSON.stringify(data));
-        goBtn.disabled = false; goBtn.textContent = "TTS 생성 & 듣기";
-        return;
-      }
-
-      // Base64 → Blob 변환
-      const byteString = atob(data.audioContent);
-      const byteArray = new Uint8Array(byteString.length);
-      for (let i = 0; i < byteString.length; i++) byteArray[i] = byteString.charCodeAt(i);
-      const blob = new Blob([byteArray], { type: "audio/mp3" });
-      const url = URL.createObjectURL(blob);
-
-      // 브라우저에서 재생
-      player.src = url;
-      player.play();
-
-      // 다운로드 링크
-      downloadLink.href = url;
-      downloadLink.download = "tts.mp3";
-      downloadLink.style.display = "inline-block";
-
-      goBtn.disabled = false; goBtn.textContent = "TTS 생성 & 듣기";
+    function populateVoices(lang) {
+      voiceEl.innerHTML = "";
+      (VOICES[lang] || []).forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v.name; opt.textContent = v.label;
+        voiceEl.appendChild(opt);
+      });
     }
 
-    goBtn.onclick = synthesize;
-  </script>
-</body>
-</html>      <option value="cmn-CN-Standard-B">남성 · Standard B</option>
-    </select>
+    // 초기: 중국어 목록으로 채우기
+    populateVoices(langEl.value);
 
-    <label>속도</label>
-    <div>
-      <input type="range" id="speed" min="0.5" max="2.0" step="0.05" value="1.0" />
-      <span id="speedVal" class="muted">1.00</span>
-    </div>
-
-    <label>피치</label>
-    <div>
-      <input type="range" id="pitch" min="-10" max="10" step="0.5" value="0" />
-      <span id="pitchVal" class="muted">0.0</span>
-    </div>
-  </div>
-
-  <div class="row">
-    <button id="goBtn">생성 & 바로 듣기</button>
-    <a id="downloadLink">MP3 다운로드</a>
-  </div>
-
-  <audio id="player" controls preload="none"></audio>
-
-  <p class="muted">
-    ※ Google Cloud Console &rarr; API 키에서 <b>HTTP referrer 허용 도메인</b>에 <code>https://dalmook.github.io/*</code>를 추가하세요.<br/>
-    ※ 언어 코드는 <code>cmn-CN</code>(중국 표준어) 사용.
-  </p>
-
-  <script>
-    const textEl = document.getElementById('text');
-    const voiceEl = document.getElementById('voice');
-    const speedEl = document.getElementById('speed');
-    const pitchEl = document.getElementById('pitch');
-    const speedVal = document.getElementById('speedVal');
-    const pitchVal = document.getElementById('pitchVal');
-    const goBtn = document.getElementById('goBtn');
-    const player = document.getElementById('player');
-    const downloadLink = document.getElementById('downloadLink');
+    // 언어 바뀌면 해당 언어 보이스만 노출
+    langEl.addEventListener("change", () => {
+      populateVoices(langEl.value);
+      // 언어에 맞춰 텍스트 예시도 살짝 바꿔주면 편리
+      if (langEl.value === "cmn-CN" && !textEl.value.trim())
+        textEl.value = "公司同事中, 周围去外国留学的同事多吗？";
+      if (langEl.value === "ko-KR" && !textEl.value.trim())
+        textEl.value = "회사 동료들 중에 해외 유학 가는 동료가 많나요?";
+      if (langEl.value === "en-US" && !textEl.value.trim())
+        textEl.value = "Do many colleagues around you go abroad to study?";
+    });
 
     speedEl.oninput = () => speedVal.textContent = Number(speedEl.value).toFixed(2);
     pitchEl.oninput = () => pitchVal.textContent = Number(pitchEl.value).toFixed(1);
 
     async function synthesizeAndPlay() {
-      const apiKey = "AIzaSyB75eePCH1FTX3jXLA2mfk0EwoV_uf-Yxg"; // ← 여기에 자신의 Google Cloud API 키 넣기
+      const apiKey = "AIzaSyB75eePCH1FTX3jXLA2mfk0EwoV_uf-Yxg"; // ← 본인의 Google Cloud API 키
       const text = textEl.value.trim();
       if (!text) return alert("텍스트를 입력하세요.");
 
       goBtn.disabled = true; goBtn.textContent = "생성 중...";
       downloadLink.style.display = "none";
-      player.removeAttribute('src');
+      player.removeAttribute("src");
 
       try {
+        const body = {
+          input: { text },
+          voice: {
+            languageCode: langEl.value,   // cmn-CN / ko-KR / en-US
+            name: voiceEl.value
+          },
+          audioConfig: {
+            audioEncoding: "MP3",
+            speakingRate: Number(speedEl.value), // 0.25~4.0
+            pitch: Number(pitchEl.value)         // -20.0~20.0
+          }
+        };
+
         const res = await fetch(
           `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              input: { text },
-              voice: {
-                languageCode: "cmn-CN",
-                name: voiceEl.value
-              },
-              audioConfig: {
-                audioEncoding: "MP3",
-                speakingRate: Number(speedEl.value), // 0.25 ~ 4.0
-                pitch: Number(pitchEl.value)         // -20.0 ~ 20.0
-              }
-            })
-          }
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
         );
-
         const data = await res.json();
-        if (!data.audioContent) {
-          throw new Error(JSON.stringify(data));
-        }
+        if (!data.audioContent) throw new Error(JSON.stringify(data));
 
-        // Base64 → Blob → blob URL
-        const byteString = atob(data.audioContent);
-        const byteArray = new Uint8Array(byteString.length);
-        for (let i = 0; i < byteString.length; i++) byteArray[i] = byteString.charCodeAt(i);
-        const blob = new Blob([byteArray], { type: "audio/mpeg" });
+        // Base64 → Blob → URL
+        const bin = atob(data.audioContent);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const blob = new Blob([bytes], { type: "audio/mpeg" });
         const url = URL.createObjectURL(blob);
 
-        // 오디오 플레이어로 즉시 재생
+        // 즉시 재생 + 다운로드 제공
         player.src = url;
-        player.play().catch(() => {/* 사용자가 상호작용 후 재생 필요할 수 있음 */});
-
-        // 다운로드 링크 노출
+        player.play().catch(()=>{});
         downloadLink.href = url;
         downloadLink.download = "tts.mp3";
         downloadLink.style.display = "inline-block";
@@ -225,7 +174,7 @@
       }
     }
 
-    document.getElementById('goBtn').addEventListener('click', synthesizeAndPlay);
+    document.getElementById("goBtn").addEventListener("click", synthesizeAndPlay);
   </script>
 </body>
 </html>
