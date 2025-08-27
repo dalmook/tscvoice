@@ -1,40 +1,131 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>중국어 TTS (재생 + MP3 저장)</title>
+  <title>중국어 & 한국어 TTS (재생 + MP3 저장)</title>
   <style>
-    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,"Noto Sans CJK KR",sans-serif; max-width: 800px; margin: 24px auto; padding: 0 16px; line-height: 1.5; }
-    .row { margin: 12px 0; }
-    label { display:inline-block; width:110px; font-weight:600; }
-    textarea { width:100%; box-sizing: border-box; font-size:16px; }
-    select, input[type="range"] { width: calc(100% - 120px); max-width: 420px; }
-    button { padding:10px 14px; border:0; border-radius:10px; font-weight:600; cursor:pointer; }
-    #goBtn { background:#2563eb; color:#fff; }
-    #downloadLink { margin-left:10px; display:none; }
-    .muted { color:#666; font-size:14px; }
+    body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 0 16px; line-height: 1.5; }
+    label { font-weight: bold; margin-right: 10px; }
+    textarea { width:100%; font-size:16px; margin: 10px 0; }
+    button { padding:8px 14px; border:0; border-radius:8px; font-weight:bold; cursor:pointer; }
+    #goBtn { background:#2563eb; color:white; }
     audio { width:100%; margin-top:10px; }
-    .grid{ display:grid; grid-template-columns:110px 1fr; gap:8px 12px; align-items:center; }
+    select, input[type=range] { margin: 4px 0; }
+    #downloadLink { margin-left: 12px; display:none; }
   </style>
 </head>
 <body>
-  <h2>중국어 TTS → 브라우저 재생 & MP3 다운로드</h2>
+  <h2>중국어 & 한국어 TTS → 브라우저 재생 & MP3 다운로드</h2>
 
-  <div class="row">
-    <textarea id="text" rows="3">公司同事中, 周围去外国留学的同事多吗？</textarea>
-  </div>
+  <textarea id="text" rows="3">公司同事中, 周围去外国留学的同事多吗？</textarea><br>
 
-  <div class="grid">
-    <label>목소리</label>
-    <select id="voice">
-      <!-- 중국 표준어(북경어) - 남/여 다양하게 -->
-      <option value="cmn-CN-Wavenet-A">여성 · Wavenet A</option>
-      <option value="cmn-CN-Wavenet-C">여성 · Wavenet C</option>
-      <option value="cmn-CN-Wavenet-B">남성 · Wavenet B</option>
-      <option value="cmn-CN-Wavenet-D">남성 · Wavenet D</option>
-      <option value="cmn-CN-Standard-A">여성 · Standard A</option>
-      <option value="cmn-CN-Standard-B">남성 · Standard B</option>
+  <!-- 언어 선택 -->
+  <label for="lang">언어</label>
+  <select id="lang">
+    <option value="cmn-CN">중국어 (표준어)</option>
+    <option value="ko-KR">한국어</option>
+  </select><br>
+
+  <!-- 목소리 선택 -->
+  <label for="voice">목소리</label>
+  <select id="voice">
+    <!-- 기본값은 중국어 -->
+    <option value="cmn-CN-Wavenet-A">중국어 여성 A</option>
+    <option value="cmn-CN-Wavenet-B">중국어 남성 B</option>
+    <option value="cmn-CN-Wavenet-C">중국어 여성 C</option>
+    <option value="cmn-CN-Wavenet-D">중국어 남성 D</option>
+    <option value="ko-KR-Wavenet-A">한국어 여성 A</option>
+    <option value="ko-KR-Wavenet-B">한국어 남성 B</option>
+    <option value="ko-KR-Wavenet-C">한국어 여성 C</option>
+    <option value="ko-KR-Wavenet-D">한국어 남성 D</option>
+  </select><br>
+
+  <!-- 속도/피치 -->
+  <label>속도</label>
+  <input type="range" id="speed" min="0.5" max="2.0" step="0.05" value="1.0" />
+  <span id="speedVal">1.0</span><br>
+
+  <label>피치</label>
+  <input type="range" id="pitch" min="-10" max="10" step="0.5" value="0" />
+  <span id="pitchVal">0.0</span><br><br>
+
+  <button id="goBtn">TTS 생성 & 듣기</button>
+  <a id="downloadLink">MP3 다운로드</a>
+  <audio id="player" controls></audio>
+
+  <script>
+    const textEl = document.getElementById("text");
+    const langEl = document.getElementById("lang");
+    const voiceEl = document.getElementById("voice");
+    const speedEl = document.getElementById("speed");
+    const pitchEl = document.getElementById("pitch");
+    const speedVal = document.getElementById("speedVal");
+    const pitchVal = document.getElementById("pitchVal");
+    const goBtn = document.getElementById("goBtn");
+    const player = document.getElementById("player");
+    const downloadLink = document.getElementById("downloadLink");
+
+    speedEl.oninput = () => speedVal.textContent = speedEl.value;
+    pitchEl.oninput = () => pitchVal.textContent = pitchEl.value;
+
+    async function synthesize() {
+      const apiKey = "YOUR_API_KEY"; // 여기에 Google Cloud API 키 넣기
+      const text = textEl.value;
+      const lang = langEl.value;
+      const voiceName = voiceEl.value;
+
+      goBtn.disabled = true; goBtn.textContent = "생성 중...";
+
+      const res = await fetch(
+        `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            input: { text },
+            voice: {
+              languageCode: lang,
+              name: voiceName
+            },
+            audioConfig: {
+              audioEncoding: "MP3",
+              speakingRate: parseFloat(speedEl.value),
+              pitch: parseFloat(pitchEl.value)
+            }
+          })
+        }
+      );
+
+      const data = await res.json();
+      if (!data.audioContent) {
+        alert("TTS 생성 실패: " + JSON.stringify(data));
+        goBtn.disabled = false; goBtn.textContent = "TTS 생성 & 듣기";
+        return;
+      }
+
+      // Base64 → Blob 변환
+      const byteString = atob(data.audioContent);
+      const byteArray = new Uint8Array(byteString.length);
+      for (let i = 0; i < byteString.length; i++) byteArray[i] = byteString.charCodeAt(i);
+      const blob = new Blob([byteArray], { type: "audio/mp3" });
+      const url = URL.createObjectURL(blob);
+
+      // 브라우저에서 재생
+      player.src = url;
+      player.play();
+
+      // 다운로드 링크
+      downloadLink.href = url;
+      downloadLink.download = "tts.mp3";
+      downloadLink.style.display = "inline-block";
+
+      goBtn.disabled = false; goBtn.textContent = "TTS 생성 & 듣기";
+    }
+
+    goBtn.onclick = synthesize;
+  </script>
+</body>
+</html>      <option value="cmn-CN-Standard-B">남성 · Standard B</option>
     </select>
 
     <label>속도</label>
